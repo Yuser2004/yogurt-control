@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-950 text-slate-100 selection:bg-emerald-500 selection:text-slate-950">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Yogurt Control - PWA Lite</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+              900: '#064e3b',
+            }
+          },
+          boxShadow: {
+            'glow-brand': '0 0 25px -5px rgba(16, 185, 129, 0.3)',
+            'glow-card': '0 10px 30px -10px rgba(0, 0, 0, 0.5)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    body {
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    }
+    
+    .glass-card {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.8) 100%);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .glass-nav {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col justify-between font-sans antialiased overflow-hidden">
+
+  <!-- HEADER HEADER / APP BAR -->
+  <header class="sticky top-0 z-20 glass-nav px-5 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="relative flex items-center justify-center">
+        <div class="absolute -inset-1 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 opacity-40 blur-sm"></div>
+        <div class="relative w-11 h-11 rounded-2xl bg-slate-900 border border-slate-700/50 flex items-center justify-center shadow-lg">
+          <i data-lucide="milk" class="w-6 h-6 text-brand-400 stroke-[2.2]"></i>
+        </div>
+      </div>
+      <div>
+        <h1 class="font-extrabold text-lg leading-tight tracking-tight text-slate-100">Yogurt Control</h1>
+        <p class="text-xs text-slate-400 font-medium">Gestión Simplificada de Ofertas</p>
+      </div>
+    </div>
+
+    <!-- Indicador de Resumen Rápido -->
+    <div id="stats-badge" class="bg-slate-900/90 border border-slate-800 rounded-2xl px-3.5 py-1.5 flex items-center gap-2.5 shadow-inner">
+      <div class="w-2 h-2 rounded-full bg-brand-500 animate-pulse"></div>
+      <div class="text-right">
+        <span class="block text-[9px] uppercase tracking-wider text-slate-400 font-bold">Aptos Hoy</span>
+        <span class="block text-xs font-black text-slate-100 leading-none" id="aptos-count">0</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main class="flex-1 overflow-y-auto px-4 py-5 space-y-5 custom-scrollbar">
+
+    <!-- BUSCADOR & BOTÓN AGREGAR -->
+    <section class="flex items-center gap-3">
+      <div class="relative flex-1">
+        <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+        <input 
+          type="text" 
+          id="search-input"
+          placeholder="Buscar por nombre o teléfono..." 
+          class="w-full bg-slate-900/90 border border-slate-800 rounded-2xl pl-10 pr-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all shadow-inner"
+        />
+      </div>
+
+      <button 
+        id="btn-open-modal"
+        class="relative group bg-gradient-to-r from-emerald-500 to-brand-600 hover:from-emerald-400 hover:to-brand-500 active:scale-95 text-slate-950 font-bold p-3 rounded-2xl shadow-glow-brand transition-all flex items-center justify-center shrink-0"
+      >
+        <i data-lucide="user-plus" class="w-5 h-5 stroke-[2.5]"></i>
+      </button>
+    </section>
+
+    <!-- PESTAÑAS DE NAVEGACIÓN Y FILTRADO -->
+    <section>
+      <div class="grid grid-cols-3 gap-1.5 bg-slate-900/80 p-1.5 border border-slate-800/80 rounded-2xl text-xs font-bold">
+        <button id="tab-aptos" class="py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-brand-500 text-slate-950 shadow-md transition-all flex items-center justify-center gap-2">
+          <i data-lucide="check-circle-2" class="w-4 h-4 stroke-[2.2]"></i>
+          <span>Aptos</span>
+        </button>
+        <button id="tab-ofrecidos" class="py-2.5 rounded-xl text-slate-400 hover:text-slate-200 transition-all flex items-center justify-center gap-2">
+          <i data-lucide="clock" class="w-4 h-4 stroke-[2.2]"></i>
+          <span>Ofrecidos</span>
+        </button>
+        <button id="tab-todos" class="py-2.5 rounded-xl text-slate-400 hover:text-slate-200 transition-all flex items-center justify-center gap-2">
+          <i data-lucide="users" class="w-4 h-4 stroke-[2.2]"></i>
+          <span>Todos</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- LISTA DE CLIENTES -->
+    <section id="client-list" class="space-y-3.5 pb-6">
+      <!-- Tarjetas insertadas por JS -->
+    </section>
+
+  </main>
+
+  <!-- MODAL: AGREGAR / EDITAR CLIENTE -->
+  <div id="client-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-end sm:items-center justify-center p-0 sm:p-4 transition-all">
+    <div class="glass-card w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-5 shadow-glow-card border-slate-700/50 animate-in slide-in-from-bottom duration-200">
+      
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-400">
+            <i data-lucide="user-plus" class="w-4 h-4"></i>
+          </div>
+          <h3 id="modal-title" class="font-bold text-slate-100 text-base">Nuevo Cliente</h3>
+        </div>
+        <button id="btn-close-modal" class="text-slate-400 hover:text-slate-100 p-1.5 rounded-xl hover:bg-slate-800 transition-colors">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="client-form" class="space-y-4">
+        <input type="hidden" id="client-id" />
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5">Nombre Completo</label>
+          <input 
+            type="text" 
+            id="form-nombre" 
+            required 
+            placeholder="Ej. Laura Restrepo"
+            class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3.5 py-3 text-sm text-slate-100 focus:outline-none focus:border-brand-500 transition-colors"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5">Teléfono (WhatsApp)</label>
+          <input 
+            type="tel" 
+            id="form-telefono" 
+            required 
+            placeholder="Ej. 573001234567"
+            class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3.5 py-3 text-sm text-slate-100 focus:outline-none focus:border-brand-500 font-mono transition-colors"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5">Días para Volver a Ofrecer</label>
+          <input 
+            type="number" 
+            id="form-cooldown" 
+            value="7" 
+            min="1" 
+            required
+            class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3.5 py-3 text-sm text-slate-100 focus:outline-none focus:border-brand-500 transition-colors"
+          />
+          <span class="text-[11px] text-slate-500 mt-1 block">Transcurrido este tiempo volverá a aparecer en la lista de 'Aptos'.</span>
+        </div>
+
+        <div class="pt-3 flex gap-3">
+          <button 
+            type="button" 
+            id="btn-cancel-modal" 
+            class="flex-1 bg-slate-800/80 hover:bg-slate-700 text-slate-300 font-semibold py-3 rounded-xl text-sm transition-colors"
+          >
+            Cancelar
+          </button>
+          <button 
+            type="submit" 
+            class="flex-1 bg-gradient-to-r from-emerald-500 to-brand-500 hover:from-emerald-400 hover:to-brand-400 text-slate-950 font-bold py-3 rounded-xl text-sm transition-all shadow-glow-brand"
+          >
+            Guardar
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- SINTETIZADOR DE AUDIO (Web Audio API) -->
+  <script>
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+      }
+
+      init() {
+        if (!this.ctx) {
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      // Clic suave para navegación
+      tap() {
+        this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(400, this.ctx.currentTime + 0.04);
+        gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.04);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.04);
+      }
+
+      // Abrir Modal
+      modalOpen() {
+        this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + 0.08);
+        gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.08);
+      }
+
+      // Éxito WhatsApp
+      whatsapp() {
+        this.init();
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, now); // C5
+        osc.frequency.setValueAtTime(659.25, now + 0.06); // E5
+        osc.frequency.setValueAtTime(783.99, now + 0.12); // G5
+        osc.frequency.setValueAtTime(1046.50, now + 0.18); // C6
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.3);
+      }
+
+      // Eliminar / Cancelar
+      dismiss() {
+        this.init();
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(280, now);
+        osc.frequency.linearRampToValueAtTime(120, now + 0.1);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.1);
+      }
+    }
+
+    const sound = new SoundEngine();
+  </script>
+
+  <!-- LÓGICA DE APLICACIÓN -->
+  <script>
+    // Credenciales de Supabase
+    const SUPABASE_URL = 'https://tu-proyecto.supabase.co';
+    const SUPABASE_ANON_KEY = 'tu-anon-key';
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Datos iniciales de demostración
+    let clientsData = [
+      { id: '1', nombre: 'Carlos Mendoza', telefono: '573001112233', cooldown_days: 7, ultimo_ofrecimiento: null },
+      { id: '2', nombre: 'Ana Gómez', telefono: '573114445566', cooldown_days: 7, ultimo_ofrecimiento: '2026-09-08T10:00:00' },
+      { id: '3', nombre: 'Roberto Silva', telefono: '573207778899', cooldown_days: 15, ultimo_ofrecimiento: '2026-08-15T15:30:00' }
+    ];
+
+    let currentFilter = 'aptos';
+    let searchQuery = '';
+
+    // Elementos DOM
+    const clientListEl = document.getElementById('client-list');
+    const modalEl = document.getElementById('client-modal');
+    const clientForm = document.getElementById('client-form');
+    const searchInput = document.getElementById('search-input');
+    const aptosCountEl = document.getElementById('aptos-count');
+
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      renderClients();
+      setupEventListeners();
+    });
+
+    // Evalúa si la persona está lista para recibir oferta
+    function isApto(cliente) {
+      if (!cliente.ultimo_ofrecimiento) return true;
+      const fechaUltimo = new Date(cliente.ultimo_ofrecimiento);
+      const hoy = new Date();
+      const diffDias = (hoy - fechaUltimo) / (1000 * 60 * 60 * 24);
+      return diffDias >= cliente.cooldown_days;
+    }
+
+    // Calcula días restantes para volver a ofrecer
+    function getRemainingDays(cliente) {
+      if (!cliente.ultimo_ofrecimiento) return 0;
+      const fechaUltimo = new Date(cliente.ultimo_ofrecimiento);
+      const hoy = new Date();
+      const diffDias = Math.floor((hoy - fechaUltimo) / (1000 * 60 * 60 * 24));
+      const restante = cliente.cooldown_days - diffDias;
+      return restante > 0 ? restante : 0;
+    }
+
+    function renderClients() {
+      clientListEl.innerHTML = '';
+
+      // Actualiza contador superior
+      const totalAptos = clientsData.filter(c => isApto(c)).length;
+      aptosCountEl.innerText = totalAptos;
+
+      const filtered = clientsData.filter(c => {
+        const matchesSearch = c.nombre.toLowerCase().includes(searchQuery.toLowerCase()) || c.telefono.includes(searchQuery);
+        const apto = isApto(c);
+        
+        if (!matchesSearch) return false;
+        if (currentFilter === 'aptos') return apto;
+        if (currentFilter === 'ofrecidos') return !apto;
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        clientListEl.innerHTML = `
+          <div class="text-center py-16 space-y-3">
+            <div class="w-14 h-14 bg-slate-900 border border-slate-800 rounded-3xl flex items-center justify-center mx-auto text-slate-500 shadow-inner">
+              <i data-lucide="inbox" class="w-7 h-7 stroke-[1.5]"></i>
+            </div>
+            <p class="text-slate-400 text-sm font-medium">No hay registros en este filtro.</p>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      filtered.forEach(cliente => {
+        const apto = isApto(cliente);
+        const diasRestantes = getRemainingDays(cliente);
+        const card = document.createElement('div');
+        card.className = 'glass-card rounded-3xl p-5 space-y-4 shadow-glow-card transition-all relative overflow-hidden';
+        
+        const fechaTexto = cliente.ultimo_ofrecimiento 
+          ? new Date(cliente.ultimo_ofrecimiento).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+          : 'Nunca';
+
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-3">
+            <div class="space-y-1">
+              <h4 class="font-bold text-slate-100 text-base leading-snug">${cliente.nombre}</h4>
+              <p class="text-xs text-slate-400 font-mono flex items-center gap-1.5">
+                <i data-lucide="phone" class="w-3.5 h-3.5 text-slate-500"></i> ${cliente.telefono}
+              </p>
+            </div>
+
+            <div class="flex items-center gap-1">
+              <button onclick="editClient('${cliente.id}')" class="p-2 text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 rounded-xl transition-colors">
+                <i data-lucide="pencil" class="w-4 h-4"></i>
+              </button>
+              <button onclick="deleteClient('${cliente.id}')" class="p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800/60 rounded-xl transition-colors">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Indicador de Enfriamiento y Estado -->
+          <div class="flex items-center justify-between text-xs bg-slate-950/50 border border-slate-800/60 rounded-2xl px-3.5 py-2.5">
+            <div class="space-y-0.5">
+              <span class="block text-[10px] uppercase text-slate-500 font-semibold">Último ofrecimiento</span>
+              <span class="text-slate-300 font-medium">${fechaTexto}</span>
+            </div>
+
+            <div class="text-right">
+              ${apto ? `
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                  Apto
+                </span>
+              ` : `
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  <i data-lucide="hourglass" class="w-3 h-3"></i>
+                  Faltan ${diasRestantes}d
+                </span>
+              `}
+            </div>
+          </div>
+
+          <!-- Botón de WhatsApp Gran Formato -->
+          <button 
+            onclick="triggerWhatsApp('${cliente.id}')"
+            class="w-full bg-gradient-to-r from-emerald-500 via-brand-500 to-teal-500 hover:brightness-110 active:scale-[0.98] text-slate-950 font-black py-3.5 rounded-2xl shadow-glow-brand flex items-center justify-center gap-2.5 transition-all"
+          >
+            <i data-lucide="message-circle" class="w-5 h-5 fill-slate-950 stroke-none"></i>
+            <span>Ofrecer por WhatsApp</span>
+          </button>
+        `;
+
+        clientListEl.appendChild(card);
+      });
+
+      lucide.createIcons();
+    }
+
+    function triggerWhatsApp(id) {
+      sound.whatsapp();
+      const cliente = clientsData.find(c => c.id === id);
+      if (!cliente) return;
+
+      cliente.ultimo_ofrecimiento = new Date().toISOString();
+      
+      const mensaje = `¡Hola ${cliente.nombre}! 👋 Espero que estés muy bien. Paso a ofrecerte el yogurt de esta semana, ¿cuántos litros te guardo? 🥛`;
+      const url = `https://wa.me/${cliente.telefono}?text=${encodeURIComponent(mensaje)}`;
+
+      window.open(url, '_blank');
+      renderClients();
+    }
+
+    function setupEventListeners() {
+      document.getElementById('btn-open-modal').addEventListener('click', () => {
+        sound.modalOpen();
+        openModal();
+      });
+
+      document.getElementById('btn-close-modal').addEventListener('click', () => {
+        sound.dismiss();
+        closeModal();
+      });
+      
+      document.getElementById('btn-cancel-modal').addEventListener('click', () => {
+        sound.dismiss();
+        closeModal();
+      });
+
+      clientForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        sound.tap();
+
+        const id = document.getElementById('client-id').value;
+        const nombre = document.getElementById('form-nombre').value;
+        const telefono = document.getElementById('form-telefono').value;
+        const cooldown_days = parseInt(document.getElementById('form-cooldown').value);
+
+        if (id) {
+          const idx = clientsData.findIndex(c => c.id === id);
+          if (idx !== -1) {
+            clientsData[idx] = { ...clientsData[idx], nombre, telefono, cooldown_days };
+          }
+        } else {
+          const nuevo = {
+            id: Date.now().toString(),
+            nombre,
+            telefono,
+            cooldown_days,
+            ultimo_ofrecimiento: null
+          };
+          clientsData.unshift(nuevo);
+        }
+
+        closeModal();
+        renderClients();
+      });
+
+      const tabs = [
+        { btn: document.getElementById('tab-aptos'), filter: 'aptos' },
+        { btn: document.getElementById('tab-ofrecidos'), filter: 'ofrecidos' },
+        { btn: document.getElementById('tab-todos'), filter: 'todos' }
+      ];
+
+      tabs.forEach(({ btn, filter }) => {
+        btn.addEventListener('click', () => {
+          sound.tap();
+          currentFilter = filter;
+          tabs.forEach(t => {
+            t.btn.className = 'py-2.5 rounded-xl text-slate-400 hover:text-slate-200 transition-all flex items-center justify-center gap-2 font-bold';
+          });
+          btn.className = 'py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-brand-500 text-slate-950 shadow-md transition-all flex items-center justify-center gap-2 font-bold';
+          renderClients();
+        });
+      });
+
+      searchInput.addEventListener('input', (e) => {
+        searchQuery = e.target.value;
+        renderClients();
+      });
+    }
+
+    function openModal(editData = null) {
+      if (editData) {
+        document.getElementById('modal-title').innerText = 'Editar Cliente';
+        document.getElementById('client-id').value = editData.id;
+        document.getElementById('form-nombre').value = editData.nombre;
+        document.getElementById('form-telefono').value = editData.telefono;
+        document.getElementById('form-cooldown').value = editData.cooldown_days;
+      } else {
+        document.getElementById('modal-title').innerText = 'Nuevo Cliente';
+        clientForm.reset();
+        document.getElementById('client-id').value = '';
+      }
+      modalEl.classList.remove('hidden');
+      modalEl.classList.add('flex');
+    }
+
+    function closeModal() {
+      modalEl.classList.add('hidden');
+      modalEl.classList.remove('flex');
+    }
+
+    function editClient(id) {
+      sound.modalOpen();
+      const cliente = clientsData.find(c => c.id === id);
+      if (cliente) openModal(cliente);
+    }
+
+    function deleteClient(id) {
+      sound.dismiss();
+      if (confirm('¿Deseas eliminar este registro?')) {
+        clientsData = clientsData.filter(c => c.id !== id);
+        renderClients();
+      }
+    }
+  </script>
+</body>
+</html>

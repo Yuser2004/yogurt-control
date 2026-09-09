@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Yogurt Control - PWA Lite</title>
+  <title>Yogurt Control</title>
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -227,7 +227,6 @@
         }
       }
 
-      // Clic suave para navegación
       tap() {
         this.init();
         const osc = this.ctx.createOscillator();
@@ -243,7 +242,6 @@
         osc.stop(this.ctx.currentTime + 0.04);
       }
 
-      // Abrir Modal
       modalOpen() {
         this.init();
         const osc = this.ctx.createOscillator();
@@ -259,17 +257,16 @@
         osc.stop(this.ctx.currentTime + 0.08);
       }
 
-      // Éxito WhatsApp
       whatsapp() {
         this.init();
         const now = this.ctx.currentTime;
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(523.25, now); // C5
-        osc.frequency.setValueAtTime(659.25, now + 0.06); // E5
-        osc.frequency.setValueAtTime(783.99, now + 0.12); // G5
-        osc.frequency.setValueAtTime(1046.50, now + 0.18); // C6
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.setValueAtTime(659.25, now + 0.06);
+        osc.frequency.setValueAtTime(783.99, now + 0.12);
+        osc.frequency.setValueAtTime(1046.50, now + 0.18);
         gain.gain.setValueAtTime(0.15, now);
         gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
         osc.connect(gain);
@@ -278,7 +275,6 @@
         osc.stop(now + 0.3);
       }
 
-      // Eliminar / Cancelar
       dismiss() {
         this.init();
         const now = this.ctx.currentTime;
@@ -299,24 +295,16 @@
     const sound = new SoundEngine();
   </script>
 
-  <!-- LÓGICA DE APLICACIÓN -->
+  <!-- LÓGICA DE APLICACIÓN CONECTADA A SUPABASE -->
   <script>
-    // Credenciales de Supabase
-    const SUPABASE_URL = 'https://tu-proyecto.supabase.co';
-    const SUPABASE_ANON_KEY = 'tu-anon-key';
+    const SUPABASE_URL = 'https://diwidnmptmtaxaiclcxn.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpd2lkbm1wdG10YXhhaWNsY3huIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5ODM5OTgsImV4cCI6MjEwNDU1OTk5OH0.iV1IVVyoOso2eacm9AZHQEAtpY5Ehu3Yf_MdN8xUEY4';
     const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Datos iniciales de demostración
-    let clientsData = [
-      { id: '1', nombre: 'Carlos Mendoza', telefono: '573001112233', cooldown_days: 7, ultimo_ofrecimiento: null },
-      { id: '2', nombre: 'Ana Gómez', telefono: '573114445566', cooldown_days: 7, ultimo_ofrecimiento: '2026-09-08T10:00:00' },
-      { id: '3', nombre: 'Roberto Silva', telefono: '573207778899', cooldown_days: 15, ultimo_ofrecimiento: '2026-08-15T15:30:00' }
-    ];
-
+    let clientsData = [];
     let currentFilter = 'aptos';
     let searchQuery = '';
 
-    // Elementos DOM
     const clientListEl = document.getElementById('client-list');
     const modalEl = document.getElementById('client-modal');
     const clientForm = document.getElementById('client-form');
@@ -325,11 +313,26 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       lucide.createIcons();
-      renderClients();
       setupEventListeners();
+      loadClients();
     });
 
-    // Evalúa si la persona está lista para recibir oferta
+    // Cargar clientes de Supabase
+    async function loadClients() {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error al cargar datos de Supabase:', error);
+        return;
+      }
+
+      clientsData = data || [];
+      renderClients();
+    }
+
     function isApto(cliente) {
       if (!cliente.ultimo_ofrecimiento) return true;
       const fechaUltimo = new Date(cliente.ultimo_ofrecimiento);
@@ -338,7 +341,6 @@
       return diffDias >= cliente.cooldown_days;
     }
 
-    // Calcula días restantes para volver a ofrecer
     function getRemainingDays(cliente) {
       if (!cliente.ultimo_ofrecimiento) return 0;
       const fechaUltimo = new Date(cliente.ultimo_ofrecimiento);
@@ -351,7 +353,6 @@
     function renderClients() {
       clientListEl.innerHTML = '';
 
-      // Actualiza contador superior
       const totalAptos = clientsData.filter(c => isApto(c)).length;
       aptosCountEl.innerText = totalAptos;
 
@@ -407,7 +408,6 @@
             </div>
           </div>
 
-          <!-- Indicador de Enfriamiento y Estado -->
           <div class="flex items-center justify-between text-xs bg-slate-950/50 border border-slate-800/60 rounded-2xl px-3.5 py-2.5">
             <div class="space-y-0.5">
               <span class="block text-[10px] uppercase text-slate-500 font-semibold">Último ofrecimiento</span>
@@ -429,7 +429,6 @@
             </div>
           </div>
 
-          <!-- Botón de WhatsApp Gran Formato -->
           <button 
             onclick="triggerWhatsApp('${cliente.id}')"
             class="w-full bg-gradient-to-r from-emerald-500 via-brand-500 to-teal-500 hover:brightness-110 active:scale-[0.98] text-slate-950 font-black py-3.5 rounded-2xl shadow-glow-brand flex items-center justify-center gap-2.5 transition-all"
@@ -445,18 +444,26 @@
       lucide.createIcons();
     }
 
-    function triggerWhatsApp(id) {
+    // Actualizar timestamp en Supabase y abrir WhatsApp
+    async function triggerWhatsApp(id) {
       sound.whatsapp();
       const cliente = clientsData.find(c => c.id === id);
       if (!cliente) return;
 
-      cliente.ultimo_ofrecimiento = new Date().toISOString();
-      
+      const now = new Date().toISOString();
+
+      const { error } = await supabase
+        .from('clientes')
+        .update({ ultimo_ofrecimiento: now })
+        .eq('id', id);
+
+      if (error) console.error('Error actualizando ofrecimiento:', error);
+
       const mensaje = `¡Hola ${cliente.nombre}! 👋 Espero que estés muy bien. Paso a ofrecerte el yogurt de esta semana, ¿cuántos litros te guardo? 🥛`;
       const url = `https://wa.me/${cliente.telefono}?text=${encodeURIComponent(mensaje)}`;
 
       window.open(url, '_blank');
-      renderClients();
+      await loadClients();
     }
 
     function setupEventListeners() {
@@ -475,7 +482,8 @@
         closeModal();
       });
 
-      clientForm.addEventListener('submit', (e) => {
+      // Guardar / Crear en Supabase
+      clientForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         sound.tap();
 
@@ -485,23 +493,22 @@
         const cooldown_days = parseInt(document.getElementById('form-cooldown').value);
 
         if (id) {
-          const idx = clientsData.findIndex(c => c.id === id);
-          if (idx !== -1) {
-            clientsData[idx] = { ...clientsData[idx], nombre, telefono, cooldown_days };
-          }
+          const { error } = await supabase
+            .from('clientes')
+            .update({ nombre, telefono, cooldown_days })
+            .eq('id', id);
+
+          if (error) console.error('Error actualizando cliente:', error);
         } else {
-          const nuevo = {
-            id: Date.now().toString(),
-            nombre,
-            telefono,
-            cooldown_days,
-            ultimo_ofrecimiento: null
-          };
-          clientsData.unshift(nuevo);
+          const { error } = await supabase
+            .from('clientes')
+            .insert([{ nombre, telefono, cooldown_days }]);
+
+          if (error) console.error('Error creando cliente:', error);
         }
 
         closeModal();
-        renderClients();
+        await loadClients();
       });
 
       const tabs = [
@@ -555,11 +562,17 @@
       if (cliente) openModal(cliente);
     }
 
-    function deleteClient(id) {
+    // Eliminar registro de Supabase
+    async function deleteClient(id) {
       sound.dismiss();
       if (confirm('¿Deseas eliminar este registro?')) {
-        clientsData = clientsData.filter(c => c.id !== id);
-        renderClients();
+        const { error } = await supabase
+          .from('clientes')
+          .delete()
+          .eq('id', id);
+
+        if (error) console.error('Error eliminando:', error);
+        await loadClients();
       }
     }
   </script>

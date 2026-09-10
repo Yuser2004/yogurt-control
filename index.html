@@ -270,18 +270,25 @@
       return restante > 0 ? restante : 0;
     }
 
-    function renderClients() {
+function renderClients() {
       clientListEl.innerHTML = '';
 
-      // Indicadores numéricos
+      // Calculamos las cantidades de cada categoría
       const totalAptos = clientsData.filter(c => isApto(c)).length;
+      const totalOfrecidos = clientsData.length - totalAptos;
+      const totalTodos = clientsData.length;
+
+      // Actualizamos la insignia superior
       aptosCountEl.innerText = totalAptos;
 
-      // Actualizar conteo total en la pestaña "Todos"
+      // Actualizamos los textos de los botones en las tres pestañas
+      const tabAptos = document.getElementById('tab-aptos');
+      const tabOfrecidos = document.getElementById('tab-ofrecidos');
       const tabTodos = document.getElementById('tab-todos');
-      if (tabTodos) {
-        tabTodos.querySelector('span').innerText = `Todos (${clientsData.length})`;
-      }
+
+      if (tabAptos) tabAptos.querySelector('span').innerText = `Aptos (${totalAptos})`;
+      if (tabOfrecidos) tabOfrecidos.querySelector('span').innerText = `Ofrecidos (${totalOfrecidos})`;
+      if (tabTodos) tabTodos.querySelector('span').innerText = `Todos (${totalTodos})`;
 
       const filtered = clientsData.filter(c => {
         const matchesSearch = c.nombre.toLowerCase().includes(searchQuery.toLowerCase()) || c.telefono.includes(searchQuery);

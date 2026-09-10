@@ -381,12 +381,14 @@ function renderClients() {
       lucide.createIcons();
     }
 
-    // Actualizar timestamp en Supabase y abrir WhatsApp
+// Actualizar timestamp en Supabase y abrir WhatsApp
     async function triggerWhatsApp(id) {
       if (window.sound?.whatsapp) window.sound.whatsapp();
+
       const cliente = clientsData.find(c => c.id === id);
       if (!cliente) return;
 
+      // Registrar el ofrecimiento en Supabase
       const now = new Date().toISOString();
 
       if (supabaseClient) {
@@ -395,21 +397,45 @@ function renderClients() {
           .update({ ultimo_ofrecimiento: now })
           .eq('id', id);
 
-        if (error) console.error('Error actualizando ofrecimiento:', error);
+        if (error) {
+          console.error('Error actualizando ofrecimiento:', error);
+        }
       }
 
+      // Limpiar teléfono y anteponer prefijo de Colombia (57) si tiene 10 dígitos
       let phoneClean = cliente.telefono.replace(/\D/g, '');
       if (!phoneClean.startsWith('57') && phoneClean.length === 10) {
         phoneClean = '57' + phoneClean;
       }
 
-      const mensaje = `¡Hola ${cliente.nombre}! 👋 Espero que estés muy bien. Paso a ofrecerte el yogurt de esta semana, ¿cuántos litros te guardo? 🥛`;
-      const url = `https://wa.me/${phoneClean}?text=${encodeURIComponent(mensaje)}`;
+      // Emojis creados desde sus puntos de código Unicode
+      const cara = String.fromCodePoint(0x263A, 0xFE0F); // ☺️
+      const corazon = String.fromCodePoint(0x1F497);    // 💗
+      const rico = String.fromCodePoint(0x1F60B);       // 😋
+      const cuchara = String.fromCodePoint(0x1F944);    // 🥄
+      const fresa = String.fromCodePoint(0x1F353);      // 🍓
+
+      // Construcción del mensaje
+      const mensaje = 
+        `Hola, ${cliente.nombre} ${cara}${corazon} ¿Cómo estás?\n` +
+        `Paso por aquí a tentarte con algo rico ${rico}${cuchara}\n` +
+        `Hoy tengo disponibles mis deliciosos yogures caseros, fresquitos y preparados con mucho cariño. ${cara}\n` +
+        `${fresa} Tenemos diferentes sabores para que elijas tu favorito.`;
+
+      // Copia de respaldo al portapapeles por si el navegador o la App alteran el texto
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(mensaje).catch(() => {});
+      }
+
+      // Enlace directo mediante la API oficial de WhatsApp
+      const url = `https://api.whatsapp.com/send?phone=${phoneClean}&text=${encodeURIComponent(mensaje)}`;
 
       window.open(url, '_blank');
+
       await loadClients();
     }
 
+    
     function setupEventListeners() {
       document.getElementById('btn-open-modal').addEventListener('click', () => {
         if (window.sound?.modalOpen) window.sound.modalOpen();

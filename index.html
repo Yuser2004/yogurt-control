@@ -646,10 +646,7 @@
       const fresa = String.fromCodePoint(0x1F353);
 
       const mensaje = 
-        `Hola, ${cliente.nombre} ${cara}${corazon} ¿Cómo estás?\n` +
-        `Paso por aquí a tentarte con algo rico ${rico}${cuchara}\n` +
-        `Hoy tengo disponibles mis deliciosos yogures caseros, fresquitos y preparados con mucho cariño. ${cara}\n` +
-        `${fresa} Tenemos diferentes sabores para que elijas tu favorito.`;
+        `Hola, ${cliente.nombre} ${cara}${corazon} ¿Cómo estás?`;
 
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(mensaje).catch(() => {});

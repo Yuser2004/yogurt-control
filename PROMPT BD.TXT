@@ -1,0 +1,75 @@
+CONTEXTO OBLIGATORIO DE BASE DE DATOS:
+Estoy compartiendo una sola instancia/proyecto de Supabase para dos sistemas completamente distintos:
+
+Sistema A (Intocable): Tablas admin_users, configuracion, y menu_items. NO tocarlas, modificarlas ni relacionarlas.
+
+Sistema B (Yogures Multitenant): Actualmente usa la tabla clientes.
+
+Reglas para cualquier script SQL o lógica que generes:
+
+Aplica aislamiento por negocio (usa un campo identificador de negocio como negocio_id o prefijos claros en las nuevas tablas tipo yogurt_...).
+
+Asegúrate de no alterar ni eliminar ninguna columna o tabla perteneciente al Sistema A.
+
+Toda consulta JavaScript o SQL debe filtrar obligatoriamente por el contexto del sistema de yogures correspondiente.
+
+
+
+
+CODIGO SQL QUE METIMOS ÁRA LA configuracion: 
+-- ============================================================
+-- 1. MODIFICAR TABLA CLIENTES EXISTENTE
+-- Agrega soporte multitenant sin borrar ni alterar los datos actuales
+-- ============================================================
+
+ALTER TABLE clientes 
+ADD COLUMN IF NOT EXISTS negocio_id text DEFAULT 'yogurt_1';
+
+-- Comentario explicativo en la columna
+COMMENT ON COLUMN clientes.negocio_id IS 'Identificador del negocio para separar clientes entre distintas instancias del sistema de yogures.';
+
+
+-- ============================================================
+-- 2. CREAR TABLA DE CONFIGURACIÓN FINANCIERA (yogurt_config)
+-- Guarda precios base y costos para calcular ganancias automáticamente
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS yogurt_config (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    negocio_id text NOT NULL UNIQUE,
+    precio_unidad numeric(10,2) NOT NULL DEFAULT 0.00,
+    costo_unidad numeric(10,2) NOT NULL DEFAULT 0.00,
+    created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+COMMENT ON TABLE yogurt_config IS 'Configuración de precios y costos por negocio para el sistema de yogures.';
+
+
+-- ============================================================
+-- 3. CREAR TABLA DE REGISTRO DE VENTAS Y FIADOS (yogurt_ventas)
+-- Almacena cada venta, estado de pago y cálculo de totales
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS yogurt_ventas (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    negocio_id text NOT NULL,
+    cliente_id uuid NOT NULL REFERENCES clientes(id) ON DELETE CASCADE,
+    cantidad integer NOT NULL CHECK (cantidad > 0),
+    precio_unitario numeric(10,2) NOT NULL,
+    monto_total numeric(10,2) NOT NULL,
+    estado_pago text NOT NULL DEFAULT 'pagado' CHECK (estado_pago IN ('pagado', 'pendiente', 'cancelado')),
+    notas text,
+    created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+COMMENT ON TABLE yogurt_ventas IS 'Historial de ventas, fiados y entregas por cliente en el sistema de yogures.';
+
+
+-- ============================================================
+-- 4. VALORES INICIALES POR DEFECTO
+-- Crea la configuración base para el primer negocio
+-- ============================================================
+
+INSERT INTO yogurt_config (negocio_id, precio_unidad, costo_unidad)
+VALUES ('yogurt_1', 5000.00, 2500.00)
+ON CONFLICT (negocio_id) DO NOTHING;
